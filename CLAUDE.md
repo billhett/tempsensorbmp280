@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ESP32 Arduino sketch that reads temperature, humidity, and pressure from a BME280 sensor over I2C and publishes readings to an MQTT broker every 60 seconds. Single-file project: `tempsensor.ino`.
+ESP32 Arduino sketch that auto-detects a BME280 or BMP280 sensor over I2C, reads temperature and pressure (plus humidity if BME280), and publishes readings to an MQTT broker every 60 seconds. Single-file project: `tempsensor.ino`.
 
 ## Build
 
@@ -23,19 +23,21 @@ Serial monitor baud rate: **115200**
 - `PubSubClient` (MQTT)
 - `Adafruit_Sensor`
 - `Adafruit_BME280`
+- `Adafruit_BMP280`
 - `Wire.h` (ESP32 built-in, I2C)
 - `Preferences.h` (ESP32 built-in, NVS flash storage)
 
 ## Architecture
 
 ```
-BME280 (I2C: 0x76 or 0x77) → ESP32 → WiFi → MQTT Broker (192.168.1.22:1883)
+BME280/BMP280 (I2C: 0x76 or 0x77) → ESP32 → WiFi → MQTT Broker (192.168.1.22:1883)
 ```
 
-**Data flow**: `setup()` loads the MQTT topic prefix from NVS flash (default `sensor`), connects WiFi/MQTT, then attempts BME280 init via `initSensor()`. `loop()` checks connections (reboots on failure) and every 60s either calls `reportSensorData()` or retries `initSensor()` based on the `sensorOK` flag. Sensor errors are published to `<prefix>/status` via MQTT rather than halting the device.
+**Data flow**: `setup()` loads the MQTT topic prefix from NVS flash (default `sensor`), connects WiFi/MQTT, then attempts sensor init via `initSensor()` which tries BME280 first, then falls back to BMP280. `loop()` checks connections (reboots on failure) and every 60s either calls `reportSensorData()` or retries `initSensor()` based on the `sensorOK` flag. Sensor errors are published to `<prefix>/status` via MQTT rather than halting the device.
 
 **MQTT topics** (prefixed `<prefix>/`, default `sensor/`):
-- `<prefix>/temperature`, `<prefix>/pressure`, `<prefix>/humidity` — published sensor data (numeric strings, no units)
+- `<prefix>/temperature`, `<prefix>/pressure` — always published (numeric strings, no units)
+- `<prefix>/humidity` — published only when a BME280 is detected (BMP280 has no humidity sensor)
 - `<prefix>/unit/set` — subscribed; accepts `celsius`/`c` or `fahrenheit`/`f` to change temp unit
 - `<prefix>/status` — publishes connection status, unit change confirmations, and sensor init errors
 - `<prefix>/config/prefix` — subscribed; publish a new prefix string to change the topic prefix at runtime (persisted to NVS flash, survives reboots)

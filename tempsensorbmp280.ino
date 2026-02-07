@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include <Adafruit_BMP280.h>
 #include <Preferences.h>
 
 // WiFi credentials
@@ -45,10 +46,15 @@ const int LED_PIN = 2;
 enum TempUnit { CELSIUS, FAHRENHEIT };
 TempUnit tempUnit = FAHRENHEIT;  // Default to Fahrenheit
 
+// Sensor type detection
+enum SensorType { SENSOR_NONE, SENSOR_BME280, SENSOR_BMP280 };
+SensorType detectedSensor = SENSOR_NONE;
+
 // Objects
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 Adafruit_BME280 bme;
+Adafruit_BMP280 bmp;
 bool sensorOK = false;
 
 // Connection tracking
@@ -123,18 +129,32 @@ void loop() {
 }
 
 void initSensor() {
+  // Try BME280 first (has humidity)
   if (bme.begin(0x76) || bme.begin(0x77)) {
     bme.setSampling(Adafruit_BME280::MODE_NORMAL,
                     Adafruit_BME280::SAMPLING_X1,  // temperature
                     Adafruit_BME280::SAMPLING_X1,  // pressure
                     Adafruit_BME280::SAMPLING_X1,  // humidity
                     Adafruit_BME280::FILTER_OFF);
+    detectedSensor = SENSOR_BME280;
     sensorOK = true;
     Serial.println("BME280 sensor initialized successfully");
     mqttClient.publish(topic_status.c_str(), "BME280 sensor initialized");
-  } else {
-    Serial.println("Could not find BME280 sensor!");
-    mqttClient.publish(topic_status.c_str(), "ERROR: BME280 sensor not found");
+  }
+  // Fall back to BMP280 (no humidity)
+  else if (bmp.begin(0x76) || bmp.begin(0x77)) {
+    bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,
+                    Adafruit_BMP280::SAMPLING_X1,  // temperature
+                    Adafruit_BMP280::SAMPLING_X1,  // pressure
+                    Adafruit_BMP280::FILTER_OFF);
+    detectedSensor = SENSOR_BMP280;
+    sensorOK = true;
+    Serial.println("BMP280 sensor initialized successfully (no humidity)");
+    mqttClient.publish(topic_status.c_str(), "BMP280 sensor initialized (no humidity)");
+  }
+  else {
+    Serial.println("Could not find BME280 or BMP280 sensor!");
+    mqttClient.publish(topic_status.c_str(), "ERROR: No BME/BMP280 sensor found");
   }
 }
 
@@ -267,45 +287,59 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void reportSensorData() {
   // Flash LED briefly while sending data
   digitalWrite(LED_PIN, HIGH);
-  
-  // Read sensor data
-  float temperature = bme.readTemperature();
-  float pressure = bme.readPressure() / 100.0F;  // Convert to hPa
-  float humidity = bme.readHumidity();
-  
+
+  // Read sensor data from whichever sensor was detected
+  float temperature;
+  float pressure;
+
+  if (detectedSensor == SENSOR_BME280) {
+    temperature = bme.readTemperature();
+    pressure = bme.readPressure() / 100.0F;
+  } else {
+    temperature = bmp.readTemperature();
+    pressure = bmp.readPressure() / 100.0F;
+  }
+
   // Convert temperature if needed
   if (tempUnit == FAHRENHEIT) {
     temperature = temperature * 9.0 / 5.0 + 32.0;
   }
-  
-  // Create messages
+
+  // Create and publish temperature & pressure
   char tempStr[10];
   char pressStr[10];
-  char humStr[10];
-  
+
   dtostrf(temperature, 6, 2, tempStr);
   dtostrf(pressure, 7, 2, pressStr);
-  dtostrf(humidity, 6, 2, humStr);
-  
-  // Publish data
-  String tempMessage = String(tempStr);// + (tempUnit == CELSIUS ? " C" : " F");
-  String pressMessage = String(pressStr);// + " hPa";
-  String humMessage = String(humStr);// + " %";
-  
+
+  String tempMessage = String(tempStr);
+  String pressMessage = String(pressStr);
+
   mqttClient.publish(topic_temperature.c_str(), tempMessage.c_str());
   mqttClient.publish(topic_pressure.c_str(), pressMessage.c_str());
-  mqttClient.publish(topic_humidity.c_str(), humMessage.c_str());
-  
+
   // Debug output
   Serial.println("--- Sensor Data ---");
+  Serial.print("Sensor: ");
+  Serial.println(detectedSensor == SENSOR_BME280 ? "BME280" : "BMP280");
   Serial.print("Temperature: ");
   Serial.println(tempMessage);
   Serial.print("Pressure: ");
   Serial.println(pressMessage);
-  Serial.print("Humidity: ");
-  Serial.println(humMessage);
+
+  // Only publish humidity for BME280
+  if (detectedSensor == SENSOR_BME280) {
+    float humidity = bme.readHumidity();
+    char humStr[10];
+    dtostrf(humidity, 6, 2, humStr);
+    String humMessage = String(humStr);
+    mqttClient.publish(topic_humidity.c_str(), humMessage.c_str());
+    Serial.print("Humidity: ");
+    Serial.println(humMessage);
+  }
+
   Serial.println("------------------");
-  
+
   delay(50);  // Keep LED on for 50ms
   digitalWrite(LED_PIN, LOW);
 }
