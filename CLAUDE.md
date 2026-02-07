@@ -4,17 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ESP32 Arduino sketch that auto-detects a BME280 or BMP280 sensor over I2C, reads temperature and pressure (plus humidity if BME280), and publishes readings to an MQTT broker every 60 seconds. Single-file project: `tempsensor.ino`.
+ESP32 Arduino sketch that auto-detects a BME280 or BMP280 sensor over I2C, reads temperature and pressure (plus humidity if BME280), and publishes readings to an MQTT broker every 60 seconds. Single-file project: `tempsensorbmp280.ino`.
 
 ## Build
 
 This is an Arduino `.ino` sketch targeting ESP32. Compile and upload via:
 - **arduino-cli**:
   ```
-  arduino-cli compile --fqbn esp32:esp32:esp32 /Users/bill/tempsensor
-  arduino-cli upload --fqbn esp32:esp32:esp32 --port /dev/tty.usbserial-0001 /Users/bill/tempsensor
+  arduino-cli compile --fqbn esp32:esp32:esp32 /Users/bill/tempsensorbmp280
+  arduino-cli upload --fqbn esp32:esp32:esp32 --port /dev/tty.usbserial-0001 /Users/bill/tempsensorbmp280
   ```
-- **Arduino IDE**: Open `tempsensor.ino`, select an ESP32 board, compile and upload
+- **Arduino IDE**: Open `tempsensorbmp280.ino`, select an ESP32 board, compile and upload
 
 Serial monitor baud rate: **115200**
 
