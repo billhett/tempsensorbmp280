@@ -1,15 +1,15 @@
-# ESP32 BME280 WiFi Temperature Sensor
+# ESP32 BME280/BMP280 MQTT Sensor
 
-An ESP32-based environmental sensor that reads temperature, humidity, and barometric pressure from a BME280 sensor and publishes the data to an MQTT broker over WiFi.
+An ESP32-based environmental sensor that auto-detects a BME280 or BMP280 over I2C and publishes temperature, pressure, and humidity (BME280 only) to an MQTT broker every 60 seconds.
 
 ## Hardware
 
 - ESP32 development board
-- BME280 sensor (I2C)
+- BME280 or BMP280 sensor (I2C)
 
 ### Wiring
 
-| BME280 Pin | ESP32 Pin |
+| Sensor Pin | ESP32 Pin |
 |------------|-----------|
 | SDA        | GPIO 23   |
 | SCL        | GPIO 22   |
@@ -20,44 +20,68 @@ The onboard LED on GPIO 2 is used for status indication.
 
 ## Setup
 
-1. Install the following libraries in the Arduino IDE:
+1. Install the following libraries in the Arduino IDE or via `arduino-cli lib install`:
    - `PubSubClient`
    - `Adafruit Unified Sensor`
    - `Adafruit BME280 Library`
+   - `Adafruit BMP280 Library`
 
-2. Edit the configuration at the top of `tempsensor.ino`:
-   - `ssid` / `password` — WiFi credentials
-   - `mqtt_server` / `mqtt_port` — MQTT broker address
-   - `mqtt_client_id` — unique client ID for this device
-   - MQTT topic prefix (default `lr/`) — change to match the sensor's location
+2. Edit the configuration at the top of `tempsensorbmp280.ino`:
+   ```cpp
+   const char* ssid = "YourSSID";
+   const char* password = "YourPassword";
+   const char* mqtt_server = "192.168.1.22";
+   const int mqtt_port = 1883;
+   ```
 
-3. Select your ESP32 board in Arduino IDE, compile, and upload.
+3. Compile and upload:
+   ```bash
+   arduino-cli compile --fqbn esp32:esp32:esp32 .
+   arduino-cli upload --fqbn esp32:esp32:esp32 --port /dev/tty.usbserial-0001 .
+   ```
+   Or open `tempsensorbmp280.ino` in Arduino IDE, select an ESP32 board, and upload.
+
+Serial monitor baud rate: **115200**
+
+## Sensor Auto-Detection
+
+On startup the sketch tries BME280 first (I2C address 0x76, then 0x77). If neither responds, it falls back to BMP280 at the same addresses. The detected sensor type is reported via serial and the MQTT status topic.
+
+| Sensor | Temperature | Pressure | Humidity |
+|--------|-------------|----------|----------|
+| BME280 | Yes         | Yes      | Yes      |
+| BMP280 | Yes         | Yes      | No       |
 
 ## MQTT Topics
 
-All topics use a location prefix (default `lr/`).
+All topics use a configurable prefix (default `sensor/`).
 
-| Topic             | Direction  | Description                                      |
-|-------------------|------------|--------------------------------------------------|
-| `lr/temperature`  | Published  | Temperature reading (numeric, Fahrenheit default) |
-| `lr/pressure`     | Published  | Barometric pressure in hPa                       |
-| `lr/humidity`     | Published  | Relative humidity as percentage                  |
-| `lr/unit/set`     | Subscribed | Set temp unit: `celsius`/`c` or `fahrenheit`/`f` |
-| `lr/status`       | Published  | Device status, unit changes, sensor errors       |
+| Topic                    | Direction  | Description                                      |
+|--------------------------|------------|--------------------------------------------------|
+| `sensor/temperature`     | Published  | Temperature reading (numeric string)             |
+| `sensor/pressure`        | Published  | Barometric pressure in hPa (numeric string)      |
+| `sensor/humidity`        | Published  | Relative humidity % (BME280 only)                |
+| `sensor/status`          | Published  | Device status, sensor info, errors               |
+| `sensor/unit/set`        | Subscribed | Set temp unit: `celsius`/`c` or `fahrenheit`/`f` |
+| `sensor/config/prefix`   | Subscribed | Change topic prefix at runtime (persisted to flash) |
 
-Sensor data is published every 60 seconds.
+Default temperature unit is Fahrenheit.
 
 ## LED Status
 
-| Pattern             | Meaning               |
-|---------------------|-----------------------|
-| Rapid flash (100ms) | Connecting to WiFi    |
-| Slow flash (500ms)  | Connecting to MQTT    |
-| Brief flash (50ms)  | Publishing sensor data|
-| Off                 | Normal operation      |
+| Pattern             | Meaning                |
+|---------------------|------------------------|
+| Rapid flash (100ms) | Connecting to WiFi     |
+| Slow flash (500ms)  | Connecting to MQTT     |
+| Brief flash (50ms)  | Publishing sensor data |
+| Off                 | Normal operation       |
 
 ## Connection Recovery
 
-- **WiFi lost** — device reboots immediately
-- **MQTT lost** — retries up to 10 times (5s interval), then reboots
-- **BME280 not found** — publishes error to `lr/status` and retries every 60 seconds (device stays online for remote diagnostics)
+- **WiFi lost** -- device reboots immediately
+- **MQTT lost** -- retries up to 10 times (5s interval), then reboots
+- **Sensor not found** -- publishes error to status topic and retries every 60 seconds (device stays online for remote diagnostics)
+
+## License
+
+MIT
