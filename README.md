@@ -54,16 +54,16 @@ On startup the sketch tries BME280 first (I2C address 0x76, then 0x77). If neith
 
 ## MQTT Topics
 
-All topics use a configurable prefix (default `sensor/`).
+All topics live under a `temps/` top-level namespace, followed by a configurable device prefix (default `sensor/`). Subscribe to `temps/#` to receive data from all devices.
 
-| Topic                    | Direction  | Description                                      |
-|--------------------------|------------|--------------------------------------------------|
-| `sensor/temperature`     | Published  | Temperature reading (numeric string)             |
-| `sensor/pressure`        | Published  | Barometric pressure in hPa (numeric string)      |
-| `sensor/humidity`        | Published  | Relative humidity % (BME280 only)                |
-| `sensor/status`          | Published  | Device status, sensor info, errors               |
-| `sensor/unit/set`        | Subscribed | Set temp unit: `celsius`/`c` or `fahrenheit`/`f` |
-| `sensor/config/prefix`   | Subscribed | Change topic prefix at runtime (persisted to flash) |
+| Topic                          | Direction  | Description                                      |
+|--------------------------------|------------|--------------------------------------------------|
+| `temps/sensor/temperature`     | Published  | Temperature reading (numeric string)             |
+| `temps/sensor/pressure`        | Published  | Barometric pressure in hPa (numeric string)      |
+| `temps/sensor/humidity`        | Published  | Relative humidity % (BME280 only)                |
+| `temps/sensor/status`          | Published  | Device status, sensor info, errors               |
+| `temps/sensor/unit/set`        | Subscribed | Set temp unit: `celsius`/`c` or `fahrenheit`/`f` |
+| `temps/sensor/config/prefix`   | Subscribed | Change topic prefix at runtime (persisted to flash) |
 
 Default temperature unit is Fahrenheit.
 

@@ -27,12 +27,12 @@ String topic_config_prefix;
 
 void buildTopics() {
   mqtt_client_id = "ESP32_BME280-" + prefix;
-  topic_temperature = prefix + "/temperature";
-  topic_pressure = prefix + "/pressure";
-  topic_humidity = prefix + "/humidity";
-  topic_unit_set = prefix + "/unit/set";
-  topic_status = prefix + "/status";
-  topic_config_prefix = prefix + "/config/prefix";
+  topic_temperature = "temps/" + prefix + "/temperature";
+  topic_pressure = "temps/" + prefix + "/pressure";
+  topic_humidity = "temps/" + prefix + "/humidity";
+  topic_unit_set = "temps/" + prefix + "/unit/set";
+  topic_status = "temps/" + prefix + "/status";
+  topic_config_prefix = "temps/" + prefix + "/config/prefix";
 }
 
 // Timing
