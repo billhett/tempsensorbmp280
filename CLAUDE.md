@@ -33,14 +33,15 @@ Serial monitor baud rate: **115200**
 BME280/BMP280 (I2C: 0x76 or 0x77) → ESP32 → WiFi → MQTT Broker (192.168.1.22:1883)
 ```
 
-**Data flow**: `setup()` loads the MQTT topic prefix from NVS flash (default `sensor`), connects WiFi/MQTT, then attempts sensor init via `initSensor()` which tries BME280 first, then falls back to BMP280. `loop()` checks connections (reboots on failure) and every 60s either calls `reportSensorData()` or retries `initSensor()` based on the `sensorOK` flag. Sensor errors are published to `temps/<prefix>/status` via MQTT rather than halting the device.
+**Data flow**: `setup()` loads the MQTT topic prefix and report interval from NVS flash (defaults: prefix `sensor`, interval 60s), connects WiFi/MQTT, then attempts sensor init via `initSensor()` which tries BME280 first, then falls back to BMP280. `loop()` checks connections (reboots on failure) and at the configured interval either calls `reportSensorData()` or retries `initSensor()` based on the `sensorOK` flag. Sensor errors are published to `temps/<prefix>/status` via MQTT rather than halting the device.
 
 **MQTT topics** (all under `temps/` top-level namespace, then `<prefix>/`, default `sensor/`):
 - `temps/<prefix>/temperature`, `temps/<prefix>/pressure` — always published (numeric strings, no units)
 - `temps/<prefix>/humidity` — published only when a BME280 is detected (BMP280 has no humidity sensor)
 - `temps/<prefix>/unit/set` — subscribed; accepts `celsius`/`c` or `fahrenheit`/`f` to change temp unit
-- `temps/<prefix>/status` — publishes connection status, unit change confirmations, and sensor init errors
+- `temps/<prefix>/status` — publishes connection status, IP address on connect, unit change confirmations, and sensor init errors
 - `temps/<prefix>/config/prefix` — subscribed; publish a new prefix string to change the topic prefix at runtime (persisted to NVS flash, survives reboots)
+- `temps/<prefix>/config/interval` — subscribed; accepts report interval in seconds (minimum 10), persisted to NVS flash
 
 **I2C pins**: SDA on GPIO 23, SCL on GPIO 22.
 
@@ -50,7 +51,7 @@ BME280/BMP280 (I2C: 0x76 or 0x77) → ESP32 → WiFi → MQTT Broker (192.168.1.
 
 ## Configuration
 
-WiFi SSID/password, MQTT broker IP/port are defined in `secrets.h` (gitignored). Copy `secrets.h.example` to `secrets.h` and fill in your values. Report interval is hardcoded at the top of the `.ino` file.
+WiFi SSID/password, MQTT broker IP/port are defined in `secrets.h` (gitignored). Copy `secrets.h.example` to `secrets.h` and fill in your values. Report interval defaults to 60 seconds and can be changed at runtime via MQTT (persisted to NVS flash).
 
 The **MQTT topic prefix** defaults to `sensor` and can be changed at runtime by publishing to `temps/<prefix>/config/prefix`. The new prefix is persisted to ESP32 NVS flash via `Preferences.h` and survives reboots. All topics live under the `temps/` top-level namespace (e.g. `temps/sensor/temperature`). The MQTT client ID is derived as `ESP32_BME280-<prefix>`.
 

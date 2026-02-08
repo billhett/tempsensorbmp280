@@ -1,6 +1,6 @@
 # ESP32 BME280/BMP280 MQTT Sensor
 
-An ESP32-based environmental sensor that auto-detects a BME280 or BMP280 over I2C and publishes temperature, pressure, and humidity (BME280 only) to an MQTT broker every 60 seconds.
+An ESP32-based environmental sensor that auto-detects a BME280 or BMP280 over I2C and publishes temperature, pressure, and humidity (BME280 only) to an MQTT broker at a configurable interval (default 60 seconds).
 
 ## Hardware
 
@@ -62,9 +62,10 @@ All topics live under a `temps/` top-level namespace, followed by a configurable
 | `temps/sensor/temperature`     | Published  | Temperature reading (numeric string)             |
 | `temps/sensor/pressure`        | Published  | Barometric pressure in hPa (numeric string)      |
 | `temps/sensor/humidity`        | Published  | Relative humidity % (BME280 only)                |
-| `temps/sensor/status`          | Published  | Device status, sensor info, errors               |
+| `temps/sensor/status`          | Published  | Device status, IP address on connect, sensor info, errors |
 | `temps/sensor/unit/set`        | Subscribed | Set temp unit: `celsius`/`c` or `fahrenheit`/`f` |
 | `temps/sensor/config/prefix`   | Subscribed | Change topic prefix at runtime (persisted to flash) |
+| `temps/sensor/config/interval` | Subscribed | Set report interval in seconds, min 10 (persisted to flash) |
 
 Default temperature unit is Fahrenheit.
 
@@ -81,7 +82,7 @@ Default temperature unit is Fahrenheit.
 
 - **WiFi lost** -- device reboots immediately
 - **MQTT lost** -- retries up to 10 times (5s interval), then reboots
-- **Sensor not found** -- publishes error to status topic and retries every 60 seconds (device stays online for remote diagnostics)
+- **Sensor not found** -- publishes error to status topic and retries at the configured interval (device stays online for remote diagnostics)
 
 ## License
 

@@ -25,6 +25,7 @@ String topic_humidity;
 String topic_unit_set;
 String topic_status;
 String topic_config_prefix;
+String topic_config_interval;
 
 void buildTopics() {
   mqtt_client_id = "ESP32_BME280-" + prefix;
@@ -34,10 +35,11 @@ void buildTopics() {
   topic_unit_set = "temps/" + prefix + "/unit/set";
   topic_status = "temps/" + prefix + "/status";
   topic_config_prefix = "temps/" + prefix + "/config/prefix";
+  topic_config_interval = "temps/" + prefix + "/config/interval";
 }
 
 // Timing
-const unsigned long REPORT_INTERVAL = 60000;  // 1 minute in milliseconds
+unsigned long reportInterval = 60000;  // default 60s, configurable via MQTT
 unsigned long lastReport = 0;
 
 // LED Pin (usually GPIO 2 on ESP32-Dev boards)
@@ -73,6 +75,7 @@ void setup() {
   // Load prefix from flash
   prefs.begin("config", false);
   prefix = prefs.getString("prefix", "sensor");
+  reportInterval = prefs.getULong("interval", 60000);
   buildTopics();
   Serial.print("MQTT prefix: ");
   Serial.println(prefix);
@@ -119,7 +122,7 @@ void loop() {
   mqttClient.loop();
   
   // Report sensor data or retry sensor init every minute
-  if (currentMillis - lastReport >= REPORT_INTERVAL) {
+  if (currentMillis - lastReport >= reportInterval) {
     lastReport = currentMillis;
     if (sensorOK) {
       reportSensorData();
@@ -206,12 +209,15 @@ bool connectMQTT() {
       Serial.println("connected");
       digitalWrite(LED_PIN, LOW);
 
-      // Subscribe to unit setting and config prefix topics
+      // Subscribe to unit setting and config topics
       mqttClient.subscribe(topic_unit_set.c_str());
       mqttClient.subscribe(topic_config_prefix.c_str());
+      mqttClient.subscribe(topic_config_interval.c_str());
 
-      // Publish status
+      // Publish status and IP address
       mqttClient.publish(topic_status.c_str(), "online");
+      String ipMsg = "IP: " + WiFi.localIP().toString();
+      mqttClient.publish(topic_status.c_str(), ipMsg.c_str());
       
       return true;
     } else {
@@ -254,6 +260,21 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       tempUnit = FAHRENHEIT;
       Serial.println("Temperature unit set to Fahrenheit");
       mqttClient.publish(topic_status.c_str(), "Unit set to Fahrenheit");
+    }
+  }
+
+  // Handle interval change
+  if (topicStr == topic_config_interval) {
+    message.trim();
+    long seconds = message.toInt();
+    if (seconds >= 10) {
+      reportInterval = (unsigned long)seconds * 1000;
+      prefs.putULong("interval", reportInterval);
+      String confirmMsg = "Report interval set to " + String(seconds) + "s";
+      Serial.println(confirmMsg);
+      mqttClient.publish(topic_status.c_str(), confirmMsg.c_str());
+    } else {
+      mqttClient.publish(topic_status.c_str(), "Invalid interval (minimum 10 seconds)");
     }
   }
 
