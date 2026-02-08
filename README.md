@@ -26,13 +26,14 @@ The onboard LED on GPIO 2 is used for status indication.
    - `Adafruit BME280 Library`
    - `Adafruit BMP280 Library`
 
-2. Edit the configuration at the top of `tempsensorbmp280.ino`:
+2. Copy `secrets.h.example` to `secrets.h` and fill in your values:
    ```cpp
-   const char* ssid = "YourSSID";
-   const char* password = "YourPassword";
-   const char* mqtt_server = "192.168.1.22";
-   const int mqtt_port = 1883;
+   #define WIFI_SSID "YourSSID"
+   #define WIFI_PASSWORD "YourPassword"
+   #define MQTT_SERVER "192.168.1.x"
+   #define MQTT_PORT 1883
    ```
+   Note: `secrets.h` is gitignored and will not be committed.
 
 3. Compile and upload:
    ```bash

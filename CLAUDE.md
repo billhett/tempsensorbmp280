@@ -50,7 +50,7 @@ BME280/BMP280 (I2C: 0x76 or 0x77) → ESP32 → WiFi → MQTT Broker (192.168.1.
 
 ## Configuration
 
-WiFi SSID/password, MQTT broker IP/port, and report interval are hardcoded at the top of the `.ino` file.
+WiFi SSID/password, MQTT broker IP/port are defined in `secrets.h` (gitignored). Copy `secrets.h.example` to `secrets.h` and fill in your values. Report interval is hardcoded at the top of the `.ino` file.
 
 The **MQTT topic prefix** defaults to `sensor` and can be changed at runtime by publishing to `temps/<prefix>/config/prefix`. The new prefix is persisted to ESP32 NVS flash via `Preferences.h` and survives reboots. All topics live under the `temps/` top-level namespace (e.g. `temps/sensor/temperature`). The MQTT client ID is derived as `ESP32_BME280-<prefix>`.
 

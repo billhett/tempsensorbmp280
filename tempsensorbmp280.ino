@@ -5,14 +5,15 @@
 #include <Adafruit_BME280.h>
 #include <Adafruit_BMP280.h>
 #include <Preferences.h>
+#include "secrets.h"
 
 // WiFi credentials
-const char* ssid = "Blue";
-const char* password = "tampa777";  // Update with your password
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PASSWORD;
 
 // MQTT Broker settings
-const char* mqtt_server = "192.168.1.22";
-const int mqtt_port = 1883;
+const char* mqtt_server = MQTT_SERVER;
+const int mqtt_port = MQTT_PORT;
 
 // Dynamic MQTT prefix and topics (built from prefix)
 Preferences prefs;
